@@ -2,7 +2,6 @@ package com.nybsys.tillboxweb.core;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.nybsys.tillboxweb.broker.client.BrokerClientCallBack;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,7 +32,7 @@ public abstract class Core {
     }
     //public final static List<Condition> brokerMessageIdList = new ArrayList<>();
     public final static ObjectMapper jsonMapper = new ObjectMapper().configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);;
-    public final static BrokerClientCallBack brokerClientCallBack = new BrokerClientCallBack();
+
     //public final static Object brokerLockObject = new Object();
     // A common lock for synchronization
     public final static Lock callBackLock = new ReentrantLock();

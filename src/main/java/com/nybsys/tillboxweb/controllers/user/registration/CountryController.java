@@ -8,85 +8,69 @@
  */
 package com.nybsys.tillboxweb.controllers.user.registration;
 
-import com.nybsys.tillboxweb.broker.client.MqttSubscribePublished;
-import com.nybsys.tillboxweb.constant.UserRegistrationModuleConstant;
+import com.nybsys.tillboxweb.broker.client.MqttCallBack;
+import com.nybsys.tillboxweb.broker.client.MqttUtils;
+import com.nybsys.tillboxweb.core.Core;
 import com.nybsys.tillboxweb.core.RequestMessage;
 import com.nybsys.tillboxweb.core.ResponseMessage;
 import com.nybsys.tillboxweb.models.user.registration.CountryModel;
-import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttException;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
-import static com.nybsys.tillboxweb.constant.ControllerSubscriptionConstants.WEB_API_USER_REGISTRATION_TOPIC;
-import static com.nybsys.tillboxweb.constant.WorkerPublishedConstants.WORKER_USER_REGISTRATION_MODULE_TOPIC;
+import static com.nybsys.tillboxweb.core.Core.QoS;
 
 @RestController
-@RequestMapping(UserRegistrationModuleConstant.COUNTRY_BASE_URL)
-@Api(tags = "User-Registration",value = UserRegistrationModuleConstant.COUNTRY_CONTROLLER_NAME, description = UserRegistrationModuleConstant.COUNTRY_CONTROLLER_DESCRIPTION)
+@RequestMapping("api/country/")
 public class CountryController {
 
-    @Autowired
-    MqttSubscribePublished mqttSubscribePublished;
+    final static String countryTopic="Country";
+    private static MqttClient mqttClient;
 
-    @ApiOperation(value = UserRegistrationModuleConstant.COUNTRY_SAVE_SERVICE_LINK_DESCRIPTION, response = CountryModel.class)
-    @RequestMapping(value = UserRegistrationModuleConstant.SAVE_SERVICE_LINK, method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseMessage save(@RequestBody RequestMessage requestMessage) throws MqttException {
-        ResponseMessage responseMessage = null;
+    static {
         try {
-            this.mqttSubscribePublished.setSubscriptionTopic(WEB_API_USER_REGISTRATION_TOPIC);
-            this.mqttSubscribePublished.setPublishedTopic(WORKER_USER_REGISTRATION_MODULE_TOPIC);
-            responseMessage = mqttSubscribePublished.getResponseMessage(UserRegistrationModuleConstant.COUNTRY_BASE_URL+UserRegistrationModuleConstant.SAVE_SERVICE_LINK, requestMessage);
-        } catch (Exception e) {
-            e.printStackTrace();
+            mqttClient = MqttUtils.getMqttClient();
+        }catch (Exception ex){
+            ex.printStackTrace();
         }
-        return responseMessage;
     }
 
-    @ApiOperation(value = UserRegistrationModuleConstant.COUNTRY_GET_BY_ID_SERVICE_LINK_DESCRIPTION, response = CountryModel.class)
-    @RequestMapping(value = UserRegistrationModuleConstant.GET_BY_ID_SERVICE_LINK, method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseMessage getByID(@RequestBody RequestMessage requestMessage) throws MqttException {
-        ResponseMessage responseMessage = null;
-        try {
-            this.mqttSubscribePublished.setSubscriptionTopic(WEB_API_USER_REGISTRATION_TOPIC);
-            this.mqttSubscribePublished.setPublishedTopic(WORKER_USER_REGISTRATION_MODULE_TOPIC);
-            responseMessage = mqttSubscribePublished.getResponseMessage(UserRegistrationModuleConstant.COUNTRY_BASE_URL+UserRegistrationModuleConstant.GET_BY_ID_SERVICE_LINK, requestMessage);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return responseMessage;
-    }
 
-    @ApiOperation(value = UserRegistrationModuleConstant.COUNTRY_SEARCH_SERVICE_LINK_DESCRIPTION, response = CountryModel.class)
-    @RequestMapping(value = UserRegistrationModuleConstant.SEARCH_SERVICE_LINK, method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseMessage search(@RequestBody RequestMessage requestMessage) throws MqttException {
-        ResponseMessage responseMessage = null;
-        try {
-            this.mqttSubscribePublished.setSubscriptionTopic(WEB_API_USER_REGISTRATION_TOPIC);
-            this.mqttSubscribePublished.setPublishedTopic(WORKER_USER_REGISTRATION_MODULE_TOPIC);
-            responseMessage = mqttSubscribePublished.getResponseMessage(UserRegistrationModuleConstant.COUNTRY_BASE_URL+UserRegistrationModuleConstant.SEARCH_SERVICE_LINK, requestMessage);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return responseMessage;
-    }
-
-    @ApiOperation(value = UserRegistrationModuleConstant.COUNTRY_GET_ALL_SERVICE_LINK_DESCRIPTION, response = CountryModel.class)
-    @RequestMapping(value = UserRegistrationModuleConstant.GET_ALL_SERVICE_LINK, method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ApiOperation(value = "", response = CountryModel.class)
+    @RequestMapping(value = "getAll", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseMessage getAll(@RequestBody RequestMessage requestMessage) throws MqttException {
         ResponseMessage responseMessage = null;
-        try {
-            this.mqttSubscribePublished.setSubscriptionTopic(WEB_API_USER_REGISTRATION_TOPIC);
-            this.mqttSubscribePublished.setPublishedTopic(WORKER_USER_REGISTRATION_MODULE_TOPIC);
-            responseMessage = mqttSubscribePublished.getResponseMessage(UserRegistrationModuleConstant.COUNTRY_BASE_URL+UserRegistrationModuleConstant.GET_ALL_SERVICE_LINK, requestMessage);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        String jsonString;
+            try {
+
+                Object lock = new Object();
+                MqttCallBack mqttCallBack = new MqttCallBack();
+                mqttCallBack.setLock(lock);
+                mqttClient.setCallback(mqttCallBack);
+                mqttClient.subscribe(countryTopic,QoS);
+
+                MqttMessage mqttMessage;
+                mqttMessage = MqttUtils.getMqttDefaultMessage();
+                jsonString = Core.jsonMapper.writeValueAsString(requestMessage);
+                mqttMessage.setPayload(jsonString.getBytes());
+                mqttClient.publish(countryTopic,mqttMessage);
+
+                synchronized (lock){
+                    lock.wait();
+                }
+
+                responseMessage = mqttCallBack.getResponseMessage();
+
+            }catch (Exception ex){
+                ex.printStackTrace();
+            }
+
         return responseMessage;
     }
 }
