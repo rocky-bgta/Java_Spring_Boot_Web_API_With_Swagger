@@ -24,13 +24,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.UUID;
+
 import static com.nybsys.tillboxweb.core.Core.QoS;
 
 @RestController
 @RequestMapping("api/country/")
 public class CountryController {
 
-    final static String countryTopic="Country";
+    final static String countryPublishedTopic="countryPublishedTopic";
+    final static String countrySubscriptionTopic="countrySubscriptionTopic";
     private static MqttClient mqttClient;
 
     static {
@@ -53,13 +56,16 @@ public class CountryController {
                 MqttCallBack mqttCallBack = new MqttCallBack();
                 mqttCallBack.setLock(lock);
                 mqttClient.setCallback(mqttCallBack);
-                mqttClient.subscribe(countryTopic,QoS);
+                mqttClient.subscribe(countrySubscriptionTopic,QoS);
+
+                String uuid = UUID.randomUUID().toString();
 
                 MqttMessage mqttMessage;
                 mqttMessage = MqttUtils.getMqttDefaultMessage();
+                requestMessage.token = uuid;
                 jsonString = Core.jsonMapper.writeValueAsString(requestMessage);
                 mqttMessage.setPayload(jsonString.getBytes());
-                mqttClient.publish(countryTopic,mqttMessage);
+                mqttClient.publish(countryPublishedTopic,mqttMessage);
 
                 synchronized (lock){
                     lock.wait();

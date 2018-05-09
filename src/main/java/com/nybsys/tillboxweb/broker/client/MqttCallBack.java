@@ -33,7 +33,12 @@ public class MqttCallBack implements MqttCallback {
 
         incomingMessage = new String(mqttMessage.getPayload());
 
-        this.responseMessage = Core.jsonMapper.readValue(incomingMessage, ResponseMessage.class);
+        try {
+            this.responseMessage = Core.jsonMapper.readValue(incomingMessage, ResponseMessage.class);
+        }catch (Exception ex){
+                ex.printStackTrace();
+        }
+
 
         if (incomingMessage == null) {
             throw new Exception();
